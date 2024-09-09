@@ -1,96 +1,97 @@
+"use client";
 import {
   Table,
   TableBody,
   TableCaption,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { SelectUser } from "@/db/schemas/users";
-
-// const users = [
-//   {
-//     name: "Иван Иванов",
-//     email: "ivan.ivanov@example.com",
-//     status: "Активен",
-//     registrationDate: "2023-08-01",
-//   },
-//   {
-//     name: "Мария Смирнова",
-//     email: "maria.smirnova@example.com",
-//     status: "Неактивен",
-//     registrationDate: "2023-07-15",
-//   },
-//   {
-//     name: "Алексей Петров",
-//     email: "alexey.petrov@example.com",
-//     status: "Заблокирован",
-//     registrationDate: "2023-06-20",
-//   },
-//   {
-//     name: "Ольга Сидорова",
-//     email: "olga.sidorova@example.com",
-//     status: "Активен",
-//     registrationDate: "2023-05-30",
-//   },
-//   {
-//     name: "Дмитрий Кузнецов",
-//     email: "dmitry.kuznetsov@example.com",
-//     status: "Активен",
-//     registrationDate: "2023-04-12",
-//   },
-//   {
-//     name: "Наталья Ковалева",
-//     email: "natalya.kovaleva@example.com",
-//     status: "Неактивен",
-//     registrationDate: "2023-03-25",
-//   },
-//   {
-//     name: "Сергей Морозов",
-//     email: "sergey.morozov@example.com",
-//     status: "Активен",
-//     registrationDate: "2023-02-14",
-//   },
-//   {
-//     name: "Екатерина Никитина",
-//     email: "ekaterina.nikitina@example.com",
-//     status: "Заблокирован",
-//     registrationDate: "2023-01-10",
-//   },
-//   {
-//     name: "Андрей Фролов",
-//     email: "andrey.frolov@example.com",
-//     status: "Активен",
-//     registrationDate: "2022-12-01",
-//   },
-//   {
-//     name: "Татьяна Васильева",
-//     email: "tatyana.vasileva@example.com",
-//     status: "Неактивен",
-//     registrationDate: "2022-11-05",
-//   },
-// ];
+import { X, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { TableHeaderCell } from "./TableHeaderCell";
+import { headers } from "@/constants";
 
 export function UsersTable({ users }: { users: SelectUser[] }) {
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: string;
+  } | null>(null);
+  const router = useRouter();
+
+  const handleSort = (key: string) => {
+    let direction = "ascending";
+    if (
+      sortConfig &&
+      sortConfig.key === key &&
+      sortConfig.direction === "ascending"
+    ) {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedUsers = [...users].sort((a, b) => {
+    if (sortConfig) {
+      let aValue = a[sortConfig.key as keyof SelectUser];
+      let bValue = b[sortConfig.key as keyof SelectUser];
+
+      if (aValue === null || aValue === undefined) return 1;
+      if (bValue === null || bValue === undefined) return -1;
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === "ascending" ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === "ascending" ? 1 : -1;
+      }
+    }
+    return 0;
+  });
+
+  const handleClick = (userId: number) => {
+    router.push(`/users/${userId}`);
+  };
   return (
     <Table>
       <TableCaption>Список Пользователей.</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead className="">Имя Пользователя</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Статус</TableHead>
-          <TableHead className="text-right">Дата Регистрации</TableHead>
+          {headers.map(({ title, key }) => (
+            <TableHeaderCell
+              key={key}
+              title={title}
+              sortKey={key}
+              sortConfig={sortConfig}
+              onSort={handleSort}
+            />
+          ))}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {users.map((user) => (
-          <TableRow key={user.email}>
+        {sortedUsers.map((user) => (
+          <TableRow
+            className="cursor-pointer"
+            key={user.email}
+            onClick={() => handleClick(user.id)}
+          >
             <TableCell className="font-medium">{user.username}</TableCell>
             <TableCell>{user.email}</TableCell>
-            <TableCell>{user.status}</TableCell>
-            <TableCell className="text-right">{user.createdAt}</TableCell>
+            <TableCell>
+              {user.status === "active" ? (
+                <Check color="green" />
+              ) : (
+                <X color="red" />
+              )}
+            </TableCell>
+            <TableCell>{user.createdAt}</TableCell>
           </TableRow>
         ))}
       </TableBody>

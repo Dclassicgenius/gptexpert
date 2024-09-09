@@ -1,9 +1,14 @@
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-export function RadioButtonGroup() {
+type RadioGroupProps = {
+  status: string;
+  onStatusChange: (value: string) => void;
+};
+
+export function RadioButtonGroup({ status, onStatusChange }: RadioGroupProps) {
   return (
-    <RadioGroup defaultValue="">
+    <RadioGroup value={status} onValueChange={(value) => onStatusChange(value)}>
       <div className="flex items-center space-x-2">
         <RadioGroupItem value="" id="r1" />
         <Label htmlFor="r1">Все</Label>

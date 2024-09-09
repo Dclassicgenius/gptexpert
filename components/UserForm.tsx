@@ -2,8 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -13,7 +11,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-
 import {
   Select,
   SelectContent,
@@ -22,167 +19,81 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { createUserAction } from "@/lib/actions";
+import { SelectUser } from "@/db/schemas/users";
+import { UserFormValues, userSchema } from "@/lib/zod/schema";
+import { createUserAction, updateUserAction } from "@/lib/actions";
+import { formFields } from "@/constants";
 
-export const statusEnum = z.enum(["active", "inactive"]);
-
-export const userSchema = z.object({
-  username: z.string().min(1, "Username is required").max(255),
-  email: z.string().email("Invalid email").max(255),
-  password: z
-    .string()
-    .min(6, "Password must be at least 6 characters")
-    .max(255),
-  status: statusEnum.default("active"),
-  createdAt: z.date().default(new Date()),
-  updatedAt: z.date().default(new Date()),
-  fullName: z.string().min(1, "Full name is required"),
-  phone: z.string().min(10, "Invalid phone number").max(15),
-  telegram: z.string().max(100).optional(),
-});
-
-export type UserFormValues = z.infer<typeof userSchema>;
-
-export function UserForm() {
+export function UserForm({ user }: { user?: SelectUser }) {
   const form = useForm<UserFormValues>({
+    mode: "onChange",
     resolver: zodResolver(userSchema),
-    defaultValues: {
-      username: "",
-      email: "",
-      password: "",
-      status: "active",
-      fullName: "",
-      phone: "",
-      telegram: "",
-    },
+    defaultValues: user
+      ? {
+          ...user,
+          telegram: user.telegram ?? undefined,
+        }
+      : {
+          status: "active",
+        },
   });
 
-  const onSubmit = async (data: UserFormValues) => {
-    await createUserAction(data);
+  const { isDirty, isValid, isSubmitting } = form.formState;
 
-    form.reset();
+  const onSubmit = async (data: UserFormValues) => {
+    if (!user) {
+      await createUserAction(data);
+    } else {
+      const updateUserWithId = updateUserAction.bind(null, user?.id);
+      await updateUserWithId(data);
+    }
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-        {/* Full Name Field */}
-        <FormField
-          control={form.control}
-          name="fullName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Full Name</FormLabel>
-              <FormControl>
-                <Input placeholder="John Doe" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Username Field */}
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Username</FormLabel>
-              <FormControl>
-                <Input placeholder="shadcn" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Email Field */}
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input
-                  type="email"
-                  placeholder="email@example.com"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Password Field */}
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Status</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+        {formFields.map((field) => (
+          <FormField
+            key={field.name}
+            control={form.control}
+            name={field.name as keyof UserFormValues}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>{field.label}</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select user status" />
-                  </SelectTrigger>
+                  {field.type === "select" ? (
+                    <Select
+                      onValueChange={formField.onChange}
+                      defaultValue={formField.value as string}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Статус пользователя" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {field.options?.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      type={field.type}
+                      placeholder={field.placeholder}
+                      {...formField}
+                    />
+                  )}
                 </FormControl>
-                <SelectContent>
-                  <SelectItem value="active">active</SelectItem>
-                  <SelectItem value="inactive">inactive</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ))}
 
-        {/* Phone Field */}
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Phone</FormLabel>
-              <FormControl>
-                <Input type="tel" placeholder="+1234567890" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Telegram Field */}
-        <FormField
-          control={form.control}
-          name="telegram"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Telegram</FormLabel>
-              <FormControl>
-                <Input placeholder="@telegramhandle" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button type="submit">Submit</Button>
+        <Button disabled={!isDirty || !isValid || isSubmitting} type="submit">
+          {isSubmitting ? "Submitting.." : user?.id ? "Update" : "Create"}
+        </Button>
       </form>
     </Form>
   );
